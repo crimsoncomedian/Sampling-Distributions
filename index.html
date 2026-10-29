@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sampling Distributions</title>
+<style>
+:root{
+  --bg:#f4f6f9; --card:#fff; --ink:#18212d; --muted:#5a6676; --line:#d6dce4;
+  --accent:#1f56d1; --accent-ink:#fff;
+  --pop:#78859a; --mean:#1f5fe0; --median:#8a3fc7; --sd:#d33a2c;
+  --a:#2f74dc; --b:#12957c; --stat:#f08a0c; --fit:#c0267f; --clt:#0f7d46; --param:#18212d;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10151b; --card:#1a212a; --ink:#e9eef4; --muted:#9aa7b7; --line:#2f3946;
+    --accent:#6b9bff; --accent-ink:#0b1220;
+    --pop:#8b98ad; --mean:#6ea0ff; --median:#c58cf5; --sd:#ff7b6b;
+    --a:#5b97ff; --b:#35c4a8; --stat:#ffb04a; --fit:#ff6fb8; --clt:#4fd68a; --param:#e9eef4;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10151b; --card:#1a212a; --ink:#e9eef4; --muted:#9aa7b7; --line:#2f3946;
+  --accent:#6b9bff; --accent-ink:#0b1220;
+  --pop:#8b98ad; --mean:#6ea0ff; --median:#c58cf5; --sd:#ff7b6b;
+  --a:#5b97ff; --b:#35c4a8; --stat:#ffb04a; --fit:#ff6fb8; --clt:#4fd68a; --param:#e9eef4;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.7rem;margin:0 0 2px}
+.lede{margin:0 0 16px;color:var(--muted)}
+h2{font-size:1.05rem;margin:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.group{display:flex;flex-direction:column;gap:4px}
+.group>span,.group>label.cap{font-size:.78rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:8px;min-height:42px;padding:6px 12px}
+select{padding-right:6px}
+button{cursor:pointer;font-weight:600}
+button:hover:not(:disabled){border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button:disabled,select:disabled{opacity:.5;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.check{display:inline-flex;gap:8px;align-items:center;min-height:42px;cursor:pointer}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.grid{display:grid;gap:16px;grid-template-columns:1fr;align-items:start}
+@media (min-width:940px){.grid{grid-template-columns:1fr 1fr}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px 12px;min-width:0}
+.card-head{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:center;margin-bottom:6px}
+.card-head .ctl{display:flex;flex-wrap:wrap;gap:8px 12px}
+.card-head label{display:flex;gap:6px;align-items:center;font-size:.9rem;color:var(--muted)}
+.hint{margin:0 0 4px;color:var(--muted);font-size:.9rem}
+canvas{display:block;width:100%;height:210px}
+canvas.pop{touch-action:none;cursor:crosshair}
+.tag{display:inline-block;min-width:1.6em;text-align:center;border-radius:6px;padding:0 6px;margin-left:6px;font-size:.85rem;color:#fff;background:var(--c)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 18px;margin:2px 0 6px;font-size:.88rem;color:var(--muted)}
+.legend .check{min-height:34px}
+.sw{display:inline-block;width:18px;height:0;border-top:3px solid var(--c);margin-right:6px;vertical-align:middle}
+.sw.dash{border-top-style:dashed}
+.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 14px;margin:6px 0 0}
+.readout div{border-top:1px solid var(--line);padding-top:4px}
+.readout dt{font-size:.78rem;color:var(--muted)}
+.readout dd{margin:0;font-size:1.15rem;font-weight:650;font-variant-numeric:tabular-nums}
+details{margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px}
+summary{cursor:pointer;font-weight:600}
+details ol{margin:8px 0 4px 20px;padding:0}
+details li{margin:6px 0}
+.tip{position:fixed;z-index:10;pointer-events:none;background:var(--ink);color:var(--bg);padding:6px 10px;border-radius:8px;font-size:.9rem;line-height:1.4;box-shadow:0 4px 14px rgba(0,0,0,.28);max-width:260px;font-variant-numeric:tabular-nums}
+.tip b{font-size:1rem}
+.card.off>:not(.card-head){display:none}
+.card.off .ctl{display:none}
+.card.off .card-head{margin-bottom:0}
+.card.off h2{color:var(--muted)}
+.sr{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Sampling Distributions</h1>
+  <p class="lede">Take a sample, compute a statistic, and do it again and again. The pile of results is the statistic's sampling distribution.</p>
+
+  <div class="toolbar" role="group" aria-label="Controls">
+    <div class="group">
+      <label class="cap" for="popSel">Population</label>
+      <select id="popSel">
+        <option value="normal">Normal</option>
+        <option value="uniform">Uniform</option>
+        <option value="skewed">Skewed right</option>
+        <option value="bimodal">Bimodal</option>
+        <option value="custom">Custom (drawn)</option>
+      </select>
+    </div>
+    <div class="group">
+      <span>Draw samples</span>
+      <div class="row">
+        <button id="d1" class="primary" data-k="1">Draw 1</button>
+        <button data-k="10">Draw 10</button>
+        <button data-k="1000">Draw 1,000</button>
+        <button data-k="10000">Draw 10,000</button>
+      </div>
+    </div>
+    <div class="group">
+      <span>&nbsp;</span>
+      <div class="row">
+        <button id="reset">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="grid">
+    <div class="col">
+      <section class="card" aria-labelledby="popH">
+        <div class="card-head"><h2 id="popH">1. Population</h2></div>
+        <p class="hint">Click and drag on the chart to draw your own shape.</p>
+        <canvas id="cvPop" class="pop" role="img" aria-label="Population histogram"></canvas>
+        <div class="legend">
+          <span><i class="sw" style="--c:var(--mean)"></i>mean</span>
+          <span><i class="sw dash" style="--c:var(--median)"></i>median</span>
+          <span><i class="sw" style="--c:var(--sd)"></i>&plusmn;1 standard deviation</span>
+        </div>
+        <dl class="readout" id="popOut"></dl>
+      </section>
+
+      <section class="card" aria-labelledby="smpH">
+        <div class="card-head"><h2 id="smpH">2. One sample</h2></div>
+        <p class="hint" id="smpHint"></p>
+        <canvas id="cvSmp" role="img" aria-label="Dot plot of the latest sample"></canvas>
+        <div class="legend">
+          <span><i class="sw dash" style="--c:var(--muted)"></i>population mean</span>
+          <span><i class="sw" style="--c:var(--stat)"></i>this sample's statistic</span>
+        </div>
+      </section>
+    </div>
+
+    <div class="col" id="panels"></div>
+  </main>
+
+  <details>
+    <summary>Things to try</summary>
+    <ol>
+      <li>Population <b>Normal</b>, statistic <b>Mean</b>. Switch on panel <b>B</b> (section 4), set it to N = 25, and draw 10,000. Hover over the bars to read exact values. How do the two spreads differ? Check the standard error against &sigma;/&radic;N.</li>
+      <li>Population <b>Skewed right</b>, N = 2 versus N = 25, statistic <b>Mean</b>. What happens to the shape? Turn on the CLT curve.</li>
+      <li>Compare <b>Variance (&divide;N)</b> with <b>Variance (&divide;N&minus;1)</b> at N = 5. Which one's average lands on the population value?</li>
+      <li>Draw a strange population of your own, then see whether the sample mean still looks normal.</li>
+    </ol>
+  </details>
+  <div class="sr" id="status" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const f2 = v => Number.isFinite(v) ? v.toFixed(2) : '–';
+const niceCeil = v => { if (!(v > 0)) return 1; const e = 10 ** Math.floor(Math.log10(v)), x = v / e; return (x <= 1 ? 1 : x <= 2 ? 2 : x <= 5 ? 5 : 10) * e; };
+const niceStep = (range, n) => { const raw = range / n, e = 10 ** Math.floor(Math.log10(raw)), x = raw / e; return (x < 1.5 ? 1 : x < 3 ? 2 : x < 7 ? 5 : 10) * e; };
+function ticks(a, b, n) {
+  const step = niceStep(b - a, n), out = [];
+  for (let t = Math.ceil(a / step - 1e-9) * step; t <= b + 1e-9; t += step) out.push(+t.toFixed(10));
+  return { out, step };
+}
+const fmtTick = (t, step) => step >= 1 ? Math.round(t).toLocaleString() : t.toFixed(Math.max(0, -Math.floor(Math.log10(step) + 1e-9)));
+
+/* ---------- population ---------- */
+const NV = 33;                         // values 0..32
+let w = new Array(NV).fill(0);         // bar heights, 0..1
+let pop, cdf;
+
+const PRESETS = {
+  normal:  x => Math.exp(-((x - 16) ** 2) / 50),
+  uniform: () => 1,
+  skewed:  x => x * Math.exp(-x / 3.5),
+  bimodal: x => Math.exp(-((x - 7) ** 2) / 18) + Math.exp(-((x - 25) ** 2) / 18),
+};
+function setPreset(key) {
+  const h = Array.from({ length: NV }, (_, x) => PRESETS[key](x));
+  const mx = Math.max(...h);
+  w = h.map(v => v / mx);
+  computePop();
+}
+function computePop() {
+  let s = w.reduce((a, b) => a + b, 0);
+  if (s <= 0) { w[16] = 1; s = 1; }
+  const p = w.map(v => v / s);
+  let acc = 0;
+  cdf = p.map(v => (acc += v));
+  cdf[NV - 1] = Infinity;
+  const mean = p.reduce((a, v, x) => a + v * x, 0);
+  const mom = k => p.reduce((a, v, x) => a + v * (x - mean) ** k, 0);
+  const m2 = mom(2), sd = Math.sqrt(m2);
+  const med = p.findIndex((_, i) => cdf[i] >= 0.5 - 1e-12);
+  let lo = 0, hi = NV - 1;
+  while (p[lo] === 0) lo++;
+  while (p[hi] === 0) hi--;
+  pop = {
+    p, mean, sd, median: med,
+    skew: sd > 1e-9 ? mom(3) / m2 ** 1.5 : NaN,
+    kurt: sd > 1e-9 ? mom(4) / (m2 * m2) - 3 : NaN,
+    mad: p.reduce((a, v, x) => a + v * Math.abs(x - mean), 0),
+    min: lo, max: hi,
+  };
+}
+function drawValue() {
+  const r = Math.random();
+  let lo = 0, hi = NV - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (cdf[m] >= r) hi = m; else lo = m + 1; }
+  return lo;
+}
+
+/* ---------- statistics ---------- */
+const meanF = a => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i]; return s / a.length; };
+const ssd = a => { const m = meanF(a); let s = 0; for (let i = 0; i < a.length; i++) s += (a[i] - m) ** 2; return s; };
+const STATS = {
+  mean:   { label: 'Mean', plural: 'sample means', sym: 'mean', grid: true, axis: [0, 32], bw: 0.25, fn: meanF, param: () => pop.mean },
+  median: { label: 'Median', plural: 'sample medians', sym: 'median', grid: true, axis: [0, 32], bw: 0.5,
+            fn: a => { const s = Float64Array.from(a).sort(), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; }, param: () => pop.median },
+  sd:     { label: 'Standard deviation (÷N)', plural: 'sample standard deviations', sym: 'sd', fn: a => Math.sqrt(ssd(a) / a.length), param: () => pop.sd },
+  var:    { label: 'Variance (÷N)', plural: 'sample variances', sym: 'variance', fn: a => ssd(a) / a.length, param: () => pop.sd ** 2 },
+  varu:   { label: 'Variance (÷N−1)', plural: 'sample variances (÷N−1)', sym: 'variance', fn: a => ssd(a) / (a.length - 1), param: () => pop.sd ** 2 },
+  mad:    { label: 'Mean absolute deviation', plural: 'sample mean absolute deviations', sym: 'MAD',
+            fn: a => { const m = meanF(a); let s = 0; for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - m); return s / a.length; }, param: () => pop.mad },
+  range:  { label: 'Range', plural: 'sample ranges', sym: 'range', grid: true, axis: [0, 32], bw: 1,
+            fn: a => { let lo = Infinity, hi = -Infinity; for (let i = 0; i < a.length; i++) { if (a[i] < lo) lo = a[i]; if (a[i] > hi) hi = a[i]; } return hi - lo; }, param: () => pop.max - pop.min },
+};
+const SIZES = [2, 5, 10, 16, 20, 25];
+
+/* ---------- sampling-distribution panels ---------- */
+class Panel {
+  constructor(key, name, colorVar, stat, n) {
+    Object.assign(this, { key, name, colorVar, stat, n, active: key === 'A', fit: false, clt: false });
+    this.reset();
+    this.buildDom();
+  }
+  reset() { this.vals = []; this.s = [0, 0, 0, 0]; this.max = 0; this.flash = false; this.raw = null; this.hover = -1; }
+  add(v) {
+    this.vals.push(v);
+    const s = this.s, v2 = v * v;
+    s[0] += v; s[1] += v2; s[2] += v2 * v; s[3] += v2 * v2;
+    if (v > this.max) this.max = v;
+  }
+  drawOnce() {
+    const n = this.n, raw = new Float64Array(n);
+    for (let i = 0; i < n; i++) raw[i] = drawValue();
+    this.raw = raw;
+    this.add(STATS[this.stat].fn(raw));
+  }
+  moments() {
+    const r = this.vals.length;
+    if (!r) return null;
+    const [s1, s2, s3, s4] = this.s, m = s1 / r, e2 = s2 / r, e3 = s3 / r, e4 = s4 / r;
+    const m2 = Math.max(e2 - m * m, 0), m3 = e3 - 3 * m * e2 + 2 * m ** 3, m4 = e4 - 4 * m * e3 + 6 * m * m * e2 - 3 * m ** 4;
+    return { r, mean: m, sd: Math.sqrt(m2), skew: m2 > 1e-10 ? m3 / m2 ** 1.5 : NaN, kurt: m2 > 1e-10 ? m4 / (m2 * m2) - 3 : NaN };
+  }
+  bins() {
+    const S = STATS[this.stat];
+    let start, bw, nb;
+    if (S.grid) { bw = this.stat === 'mean' ? (this.n === 2 ? .5 : Math.max(1, Math.round(.4 * this.n)) / this.n) : S.bw; start = S.axis[0] - bw / 2; nb = Math.ceil((S.axis[1] - start) / bw - 1e-9); }
+    else { nb = 50; start = 0; bw = niceCeil(Math.max(this.max * 1.05, S.param() * 2.5, 1e-6)) / nb; }
+    const counts = new Array(nb).fill(0);
+    for (const v of this.vals) counts[Math.min(nb - 1, Math.max(0, Math.floor((v - start) / bw + 1e-9)))]++;
+    return { start, bw, nb, counts };
+  }
+  buildDom() {
+    const sec = document.createElement('section');
+    sec.className = 'card';
+    sec.setAttribute('aria-labelledby', `h${this.key}`);
+    sec.innerHTML = `
+      <div class="card-head">
+        <h2 id="h${this.key}">${this.key === 'A' ? '3. ' : '4. '}<span class="ttl"></span><span class="tag" style="--c:var(${this.colorVar})">${this.name}</span></h2>
+        <label class="check"><input type="checkbox" class="en"> Panel on</label>
+        <div class="ctl">
+          <label>Statistic <select class="stat">${Object.entries(STATS).map(([k, s]) => `<option value="${k}">${s.label}</option>`).join('')}</select></label>
+          <label>Sample size N <select class="nsel">${SIZES.map(n => `<option value="${n}">${n}</option>`).join('')}</select></label>
+        </div>
+      </div>
+      <canvas role="img"></canvas>
+      <div class="legend">
+        <span><i class="sw dash" style="--c:var(--param)"></i>population value</span>
+        <label class="check"><input type="checkbox" class="fit"><i class="sw" style="--c:var(--fit)"></i>fitted normal</label>
+        <label class="check"><input type="checkbox" class="clt"><i class="sw dash" style="--c:var(--clt)"></i>CLT prediction (mean)</label>
+      </div>
+      <dl class="readout"></dl>`;
+    this.el = sec;
+    this.cv = $('canvas', sec);
+    this.out = $('.readout', sec);
+    this.sSel = $('.stat', sec); this.nSel = $('.nsel', sec);
+    this.fitCb = $('.fit', sec); this.cltCb = $('.clt', sec); this.enCb = $('.en', sec);
+    this.enCb.checked = this.active; sec.classList.toggle('off', !this.active);
+    this.enCb.addEventListener('change', () => setActive(this, this.enCb.checked));
+    this.cv.addEventListener('pointermove', e => hoverPanel(this, e));
+    this.cv.addEventListener('pointerdown', e => hoverPanel(this, e));
+    this.cv.addEventListener('pointerleave', () => { if (this.hover >= 0) { this.hover = -1; drawPanel(this); } hideTip(); });
+    this.sSel.value = this.stat; this.nSel.value = this.n;
+    this.sSel.addEventListener('change', () => { this.stat = this.sSel.value; this.reset(); this.syncControls(); onPanelChange(this); });
+    this.nSel.addEventListener('change', () => { this.n = +this.nSel.value; this.reset(); onPanelChange(this); });
+    this.fitCb.addEventListener('change', () => { this.fit = this.fitCb.checked; this.render(); });
+    this.cltCb.addEventListener('change', () => { this.clt = this.cltCb.checked; this.render(); });
+    this.syncControls();
+  }
+  syncControls() {
+    const isMean = this.stat === 'mean';
+    this.cltCb.disabled = !isMean;
+    if (!isMean) { this.clt = false; this.cltCb.checked = false; }
+    this.updateTitle();
+  }
+  updateTitle() { $('.ttl', this.el).textContent = `Distribution of ${STATS[this.stat].plural}, N = ${this.n}`; }
+  render() {
+    this.updateTitle();
+    drawPanel(this);
+    renderReadout(this);
+  }
+}
+
+/* ---------- canvas drawing ---------- */
+function prep(cv) {
+  const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  const W = Math.max(10, Math.round(r.width)), H = Math.max(10, Math.round(r.height));
+  if (cv.width !== W * d || cv.height !== H * d) { cv.width = W * d; cv.height = H * d; }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  return { ctx, W, H };
+}
+function colors() {
+  const s = getComputedStyle(document.documentElement), g = n => s.getPropertyValue(n).trim();
+  return { ink: g('--ink'), muted: g('--muted'), line: g('--line'), pop: g('--pop'), mean: g('--mean'), median: g('--median'),
+           sd: g('--sd'), stat: g('--stat'), fit: g('--fit'), clt: g('--clt'), param: g('--param'), a: g('--a'), b: g('--b') };
+}
+const FONT = '12.5px system-ui,-apple-system,"Segoe UI",sans-serif';
+function xAxis(ctx, c, L, T, pw, ph, X, tk) {
+  ctx.strokeStyle = c.muted; ctx.fillStyle = c.muted; ctx.lineWidth = 1; ctx.font = FONT;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.beginPath(); ctx.moveTo(L, T + ph + .5); ctx.lineTo(L + pw, T + ph + .5); ctx.stroke();
+  for (const t of tk.out) {
+    const x = Math.round(X(t)) + .5;
+    ctx.beginPath(); ctx.moveTo(x, T + ph); ctx.lineTo(x, T + ph + 5); ctx.stroke();
+    ctx.fillText(fmtTick(t, tk.step), x, T + ph + 8);
+  }
+}
+function yLabel(ctx, c, text, H) {
+  ctx.save(); ctx.fillStyle = c.muted; ctx.font = FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.translate(4, H / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(text, 0, 0); ctx.restore();
+}
+function vline(ctx, x, y0, y1, color, width, dash) {
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash || []);
+  ctx.beginPath(); ctx.moveTo(Math.round(x) + .5, y0); ctx.lineTo(Math.round(x) + .5, y1); ctx.stroke(); ctx.restore();
+}
+const M = { L: 66, R: 14, B: 32 };
+
+/* population chart */
+const cvPop = $('#cvPop');
+function popFrame(W, H) { const T = 28; return { L: M.L, T, pw: W - M.L - M.R, ph: H - T - M.B }; }
+function drawPop() {
+  const { ctx, W, H } = prep(cvPop), c = colors(), { L, T, pw, ph } = popFrame(W, H);
+  const X = x => L + (x + .5) / NV * pw;
+  ctx.fillStyle = c.pop;
+  for (let i = 0; i < NV; i++) {
+    const x0 = X(i - .5), x1 = X(i + .5);
+    ctx.fillRect(x0 + .5, T + ph * (1 - w[i]), Math.max(1, x1 - x0 - 1), ph * w[i]);
+  }
+  vline(ctx, X(pop.mean), T - 4, T + ph, c.mean, 2.5);
+  vline(ctx, X(pop.median), T - 4, T + ph, c.median, 2, [6, 4]);
+  const a = X(pop.mean - pop.sd), b = X(pop.mean + pop.sd);
+  ctx.strokeStyle = c.sd; ctx.lineWidth = 2.5; ctx.beginPath();
+  ctx.moveTo(a, 9); ctx.lineTo(a, 19); ctx.moveTo(a, 14); ctx.lineTo(b, 14); ctx.moveTo(b, 9); ctx.lineTo(b, 19); ctx.stroke();
+  xAxis(ctx, c, L, T, pw, ph, x => X(x), ticks(0, 32, 8));
+  yLabel(ctx, c, 'Relative frequency', H - 28);
+  $('#popOut').innerHTML = [['Mean', f2(pop.mean)], ['Median', f2(pop.median)], ['Std. deviation', f2(pop.sd)], ['Skewness', f2(pop.skew)], ['Excess kurtosis', f2(pop.kurt)]]
+    .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  cvPop.setAttribute('aria-label', `Population histogram. Mean ${f2(pop.mean)}, median ${f2(pop.median)}, standard deviation ${f2(pop.sd)}.`);
+}
+
+/* sample chart */
+const cvSmp = $('#cvSmp');
+let sampleView = null;          // { vals, stat, key, n }
+let sampleHover = -1;
+function drawSample() {
+  const { ctx, W, H } = prep(cvSmp), c = colors();
+  const T = 30, L = M.L, pw = W - L - M.R, ph = H - T - M.B;
+  const X = x => L + (x + .5) / NV * pw;
+  xAxis(ctx, c, L, T, pw, ph, X, ticks(0, 32, 8));
+  yLabel(ctx, c, 'Count', H - 28);
+  vline(ctx, X(pop.mean), T - 4, T + ph, c.muted, 1.5, [5, 4]);
+  const A = src(), act = panels.filter(p => p.active);
+  const others = act.length > 1 ? ` Each draw also takes a sample for panel ${act[1].name} (N = ${act[1].n}), which isn't shown here.` : '';
+  $('#smpHint').textContent = (sampleView
+    ? `Panel ${A.name}'s latest sample (N = ${sampleView.n}) and its ${STATS[sampleView.key].label.toLowerCase()}. Hover over a dot to read its value.`
+    : `Press Draw 1 to watch a sample of N = ${A.n} come out of the population (panel ${A.name}).`) + others;
+  cvSmp.hits = [];
+  if (!sampleView) {
+    ctx.fillStyle = c.muted; ctx.font = FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('No sample yet', L + pw / 2, T + ph / 2);
+    cvSmp.setAttribute('aria-label', 'Dot plot of the latest sample (empty)');
+    return;
+  }
+  const counts = new Map();
+  for (const v of sampleView.vals) counts.set(v, (counts.get(v) || 0) + 1);
+  const maxStack = Math.max(...counts.values(), 1);
+  const r = Math.max(2.5, Math.min(10, pw / NV / 2 * .92, ph / (2 * maxStack + 1)));
+  ctx.fillStyle = c.a;
+  const seen = new Map();
+  for (const v of sampleView.vals) {
+    const k = seen.get(v) || 0; seen.set(v, k + 1);
+    const cy = T + ph - r - k * 2 * r - 1;
+    ctx.beginPath(); ctx.arc(X(v), cy, r, 0, 7); ctx.fill();
+    cvSmp.hits.push({ x: X(v), y: cy, r, v });
+  }
+  const hd = cvSmp.hits[sampleHover];
+  if (hd) { ctx.strokeStyle = c.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(hd.x, hd.y, hd.r + 1.5, 0, 7); ctx.stroke(); }
+  if (sampleView.stat != null) {
+    const S = STATS[sampleView.key], v = sampleView.stat, text = `${S.sym} = ${f2(v)}`;
+    ctx.font = 'bold 13.5px system-ui,sans-serif'; ctx.fillStyle = c.stat; ctx.textBaseline = 'middle';
+    if (sampleView.key === 'mean' || sampleView.key === 'median') {
+      vline(ctx, X(v), T - 2, T + ph, c.stat, 3);
+      const tw = ctx.measureText(text).width, x = Math.min(Math.max(X(v), L + tw / 2), L + pw - tw / 2);
+      ctx.textAlign = 'center'; ctx.fillText(text, x, 12);
+    } else {
+      ctx.textAlign = 'right'; ctx.fillText(text, L + pw, 12);
+    }
+    cvSmp.setAttribute('aria-label', `Dot plot of the latest sample of ${sampleView.n}. ${text}.`);
+  }
+}
+
+/* sampling-distribution chart */
+function drawPanel(P) {
+  const { ctx, W, H } = prep(P.cv), c = colors();
+  const L = M.L, T = 16, pw = W - L - M.R, ph = H - T - M.B;
+  const S = STATS[P.stat], b = P.bins(), mom = P.moments();
+  const xmin = b.start, xmax = b.start + b.nb * b.bw;
+  const X = x => L + (x - xmin) / (xmax - xmin) * pw;
+  const color = P.colorVar === '--a' ? c.a : c.b;
+  const pdfAt = (x, mu, sd) => P.vals.length * b.bw * Math.exp(-.5 * ((x - mu) / sd) ** 2) / (sd * Math.sqrt(2 * Math.PI));
+  const cltSd = pop.sd / Math.sqrt(P.n);
+  let top = Math.max(...b.counts, 1);
+  if (P.fit && mom && mom.sd > 0) top = Math.max(top, pdfAt(mom.mean, mom.mean, mom.sd));
+  if (P.clt && P.vals.length && cltSd > 0) top = Math.max(top, pdfAt(pop.mean, pop.mean, cltSd));
+  const ymax = top * 1.1;
+  const Y = v => T + ph * (1 - v / ymax);
+  const yt = ticks(0, ymax, 4);
+  P.geo = { L, T, pw, ph, Y, b };
+  ctx.font = FONT; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.lineWidth = 1;
+  for (const t of yt.out) {
+    ctx.strokeStyle = c.line; ctx.beginPath(); ctx.moveTo(L, Math.round(Y(t)) + .5); ctx.lineTo(L + pw, Math.round(Y(t)) + .5); ctx.stroke();
+    ctx.fillStyle = c.muted; ctx.fillText(fmtTick(t, yt.step), L - 6, Y(t));
+  }
+  ctx.fillStyle = color;
+  const gap = pw / b.nb > 4 ? 1 : 0;
+  for (let i = 0; i < b.nb; i++) {
+    if (!b.counts[i]) continue;
+    const x0 = X(b.start + i * b.bw), x1 = X(b.start + (i + 1) * b.bw);
+    ctx.fillRect(x0, Y(b.counts[i]), Math.max(1, x1 - x0 - gap), T + ph - Y(b.counts[i]));
+  }
+  if (P.hover >= 0 && b.counts[P.hover] > 0) {
+    const x0 = X(b.start + P.hover * b.bw), x1 = X(b.start + (P.hover + 1) * b.bw);
+    ctx.strokeStyle = c.ink; ctx.lineWidth = 2; ctx.strokeRect(x0, Y(b.counts[P.hover]), Math.max(2, x1 - x0 - gap), T + ph - Y(b.counts[P.hover]));
+  }
+  if (P.flash && P.vals.length) {
+    const v = P.vals[P.vals.length - 1];
+    const i = Math.min(b.nb - 1, Math.max(0, Math.floor((v - b.start) / b.bw + 1e-9)));
+    const x0 = X(b.start + i * b.bw), x1 = X(b.start + (i + 1) * b.bw);
+    ctx.fillStyle = c.stat; ctx.fillRect(x0, Y(b.counts[i]), Math.max(2, x1 - x0 - gap), T + ph - Y(b.counts[i]));
+    ctx.beginPath(); const cx = (x0 + x1) / 2, ty = Y(b.counts[i]) - 4;
+    ctx.moveTo(cx, ty); ctx.lineTo(cx - 6, ty - 10); ctx.lineTo(cx + 6, ty - 10); ctx.closePath(); ctx.fill();
+  }
+  const pv = S.param();
+  if (pv >= xmin && pv <= xmax) vline(ctx, X(pv), T, T + ph, c.param, 2, [6, 4]);
+  const curve = (mu, sd, col, dash) => {
+    if (!(sd > 0) || !P.vals.length) return;
+    ctx.save(); ctx.beginPath(); ctx.rect(L, T - 4, pw, ph + 4); ctx.clip();
+    ctx.strokeStyle = col; ctx.lineWidth = 2.75; ctx.setLineDash(dash || []); ctx.beginPath();
+    for (let px = 0; px <= pw; px += 2) {
+      const x = xmin + px / pw * (xmax - xmin), y = Y(pdfAt(x, mu, sd));
+      px ? ctx.lineTo(L + px, y) : ctx.moveTo(L + px, y);
+    }
+    ctx.stroke(); ctx.restore();
+  };
+  if (P.fit && mom) curve(mom.mean, mom.sd, c.fit);
+  if (P.clt) curve(pop.mean, cltSd, c.clt, [8, 5]);
+  xAxis(ctx, c, L, T, pw, ph, X, ticks(xmin + b.bw / 2 * (S.grid ? 1 : 0), xmax, S.grid && S.axis[1] === 32 ? 8 : 6));
+  yLabel(ctx, c, 'Number of samples', H - 28);
+  if (!P.vals.length) {
+    ctx.fillStyle = c.muted; ctx.font = FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Draw samples to build this distribution', L + pw / 2, T + ph / 2);
+  }
+  P.cv.setAttribute('aria-label', mom
+    ? `Histogram of ${mom.r} ${S.plural}, N=${P.n}. Mean ${f2(mom.mean)}, standard deviation ${f2(mom.sd)}.`
+    : `Empty histogram of ${S.plural}, N=${P.n}.`);
+}
+function renderReadout(P) {
+  const S = STATS[P.stat], m = P.moments();
+  const rows = [
+    ['Samples drawn', P.vals.length.toLocaleString()],
+    [`Mean of ${S.plural}`, m ? f2(m.mean) : '–'],
+    ['Population value', f2(S.param())],
+    ['Standard error', m ? f2(m.sd) : '–'],
+  ];
+  if (P.stat === 'mean') rows.push(['Theory: σ/√N', f2(pop.sd / Math.sqrt(P.n))]);
+  rows.push(['Skewness', m ? f2(m.skew) : '–'], ['Excess kurtosis', m ? f2(m.kurt) : '–']);
+  P.out.innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+}
+
+/* ---------- app wiring ---------- */
+const panels = [new Panel('A', 'A', '--a', 'mean', 5), new Panel('B', 'B', '--b', 'mean', 25)];
+const panelsEl = $('#panels');
+panels.forEach(p => panelsEl.appendChild(p.el));
+
+let busy = false, rafPending = false;
+function renderAll() { drawPop(); drawSample(); panels.forEach(p => p.active && p.render()); }
+function scheduleRender() { if (rafPending) return; rafPending = true; requestAnimationFrame(() => { rafPending = false; renderAll(); }); setTimeout(() => { if (rafPending) { rafPending = false; renderAll(); } }, 120); }
+const src = () => panels.find(p => p.active);
+function onPanelChange(P) { if (P === src()) sampleView = null; renderAll(); }
+function syncEnable() { const n = panels.filter(p => p.active).length; panels.forEach(p => { p.enCb.disabled = p.active && n === 1; }); }
+function setActive(P, on) {
+  if (busy) { P.enCb.checked = P.active; return; }
+  P.active = on; P.el.classList.toggle('off', !on);
+  if (on) panels.forEach(p => p.reset()); else P.reset();   // switching a panel on restarts all, so counts stay comparable
+  sampleView = null; sampleHover = -1; hideTip(); syncEnable(); renderAll();
+}
+
+/* hover tooltips */
+const tip = document.createElement('div');
+tip.className = 'tip'; tip.hidden = true; tip.setAttribute('aria-hidden', 'true');
+document.body.appendChild(tip);
+function showTip(html, e) {
+  tip.innerHTML = html; tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX + 14, y = e.clientY - h - 12;
+  if (x + w > innerWidth - 8) x = e.clientX - w - 14;
+  if (y < 8) y = e.clientY + 18;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+function hideTip() { tip.hidden = true; }
+const num = x => String(+x.toFixed(3));
+function hoverPanel(P, e) {
+  const g = P.geo;
+  if (!g || !P.vals.length) { hideTip(); return; }
+  const r = P.cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, b = g.b;
+  let i = -1;
+  if (px >= g.L && px <= g.L + g.pw) {
+    const k = Math.min(b.nb - 1, Math.floor((px - g.L) / g.pw * b.nb)), cnt = b.counts[k];
+    if (cnt > 0 && py >= g.Y(cnt) - 4 && py <= g.T + g.ph) i = k;
+  }
+  if (i !== P.hover) { P.hover = i; drawPanel(P); }
+  if (i < 0) { hideTip(); return; }
+  const S = STATS[P.stat], lo = b.start + i * b.bw, cnt = b.counts[i], n = P.vals.length;
+  const range = S.grid && b.bw >= 1 ? `${S.sym} = ${Math.round(lo + b.bw / 2)}` : `${num(lo)} ≤ ${S.sym} < ${num(lo + b.bw)}`;
+  showTip(`<b>${range}</b><br>${cnt.toLocaleString()} of ${n.toLocaleString()} samples (${(100 * cnt / n).toFixed(1)}%)`, e);
+}
+function hoverSample(e) {
+  const hits = cvSmp.hits || [];
+  const r = cvSmp.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
+  let best = -1, bd = Infinity;
+  hits.forEach((h, i) => { const d = Math.hypot(h.x - px, h.y - py); if (d <= h.r + 4 && d < bd) { bd = d; best = i; } });
+  if (best !== sampleHover) { sampleHover = best; drawSample(); }
+  if (best < 0) { hideTip(); return; }
+  const v = hits[best].v, same = hits.filter(h => h.v === v).length;
+  showTip(`<b>Value ${v}</b>${same > 1 ? `<br>${same} dots at this value` : ''}`, e);
+}
+cvSmp.addEventListener('pointermove', hoverSample);
+cvSmp.addEventListener('pointerdown', hoverSample);
+cvSmp.addEventListener('pointerleave', () => { if (sampleHover >= 0) { sampleHover = -1; drawSample(); } hideTip(); });
+function resetAll() { panels.forEach(p => p.reset()); sampleView = null; renderAll(); }
+
+function lock(on) {
+  busy = on;
+  document.querySelectorAll('.toolbar button, .toolbar select, .toolbar input, .card select, .card input').forEach(el => {
+    if (on) { el.dataset.was = el.disabled ? '1' : ''; el.disabled = true; }
+    else { el.disabled = el.dataset.was === '1'; }
+  });
+  if (!on) { panels.forEach(p => p.syncControls()); syncEnable(); }
+}
+const nf = n => n.toLocaleString();
+function announce(k) {
+  const A = src(), m = A.moments();
+  $('#status').textContent = m ? `${nf(k)} ${k === 1 ? 'sample' : 'samples'} drawn. ${nf(m.r)} in total. ${STATS[A.stat].plural} average ${f2(m.mean)} with standard error ${f2(m.sd)}.` : '';
+}
+
+async function animateOne() {
+  const A = src(), S = STATS[A.stat];
+  A.flash = false; sampleHover = -1;
+  const smp = Array.from({ length: A.n }, drawValue);
+  sampleView = { vals: [], stat: null, key: A.stat, n: A.n };
+  const dt = Math.max(35, Math.min(160, 1200 / A.n));
+  for (const v of smp) { sampleView.vals.push(v); drawSample(); await sleep(dt); }
+  await sleep(300);
+  sampleView.stat = S.fn(Float64Array.from(smp));
+  drawSample();
+  await sleep(500);
+  A.add(sampleView.stat); A.flash = true;
+  for (const p of panels) if (p.active && p !== A) { p.flash = false; p.drawOnce(); }
+  renderAll();
+}
+async function batch(k) {
+  const act = panels.filter(p => p.active);
+  act.forEach(p => { p.flash = false; });
+  let done = 0;
+  while (done < k) {
+    const t0 = performance.now();
+    while (done < k && performance.now() - t0 < 14) { act.forEach(p => p.drawOnce()); done++; }
+    renderAll();
+    await sleep(0);
+  }
+  const A = src(); sampleHover = -1;
+  if (A.raw) sampleView = { vals: Array.from(A.raw), stat: A.vals[A.vals.length - 1], key: A.stat, n: A.n };
+  renderAll();
+}
+async function run(k) {
+  if (busy) return;
+  lock(true);
+  try { k === 1 ? await animateOne() : await batch(k); } finally { lock(false); announce(k); renderAll(); }
+}
+
+document.querySelectorAll('[data-k]').forEach(b => b.addEventListener('click', () => run(+b.dataset.k)));
+$('#reset').addEventListener('click', () => { if (!busy) resetAll(); });
+$('#popSel').addEventListener('change', e => { if (e.target.value !== 'custom') setPreset(e.target.value); resetAll(); });
+
+/* draw the population with the mouse, finger or pen */
+let drawing = false, lastBin = null;
+function paint(e) {
+  const r = cvPop.getBoundingClientRect(), { L, T, pw, ph } = popFrame(r.width, r.height);
+  const bin = Math.min(NV - 1, Math.max(0, Math.round((e.clientX - r.left - L) / pw * NV - .5)));
+  const h = Math.min(1, Math.max(0, 1 - (e.clientY - r.top - T) / ph));
+  const from = lastBin == null ? bin : lastBin;
+  const lo = Math.min(from, bin), hi = Math.max(from, bin);
+  for (let i = lo; i <= hi; i++) w[i] = h;
+  lastBin = bin;
+  computePop(); drawPop(); drawSample();
+}
+cvPop.addEventListener('pointerdown', e => {
+  if (busy) return;
+  drawing = true; lastBin = null; cvPop.setPointerCapture(e.pointerId);
+  $('#popSel').value = 'custom';
+  panels.forEach(p => p.reset()); sampleView = null;
+  paint(e);
+});
+cvPop.addEventListener('pointermove', e => { if (drawing) paint(e); });
+const endDraw = () => { if (drawing) { drawing = false; renderAll(); } };
+cvPop.addEventListener('pointerup', endDraw);
+cvPop.addEventListener('pointercancel', endDraw);
+
+new ResizeObserver(scheduleRender).observe(document.body);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', scheduleRender);
+
+setPreset('normal');
+syncEnable();
+renderAll();
+window.__sim = { panels, run, resetAll, get pop() { return pop; } };   // handy for the browser console
+})();
+</script>
+</body>
+</html>
